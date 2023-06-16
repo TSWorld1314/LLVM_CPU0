@@ -6,10 +6,20 @@ include(LLVMDistributionSupport)
 
 function(tablegen project ofn)
   cmake_parse_arguments(ARG "" "" "DEPENDS;EXTRA_INCLUDES" ${ARGN})
+
+  # Cpu0 for LLVM Backend
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/${ofn} PARENT_SCOPE)
+
   # Validate calling context.
   if(NOT ${project}_TABLEGEN_EXE)
     message(FATAL_ERROR "${project}_TABLEGEN_EXE not set")
   endif()
+
+  # Cpu0 for LLVM Backend
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${ofn}.tmp
+    # Generate tablegen output in a temporary file.
+    COMMAND ${${project}_TABLEGEN_EXE} ${ARGN} -I ${CMAKE_CURRENT_SOURCE_DIR}
+  )
 
   # Use depfile instead of globbing arbitrary *.td(s) for Ninja.
   if(CMAKE_GENERATOR MATCHES "Ninja")
@@ -183,6 +193,13 @@ macro(add_tablegen target project)
       # need to build this tablegen.
       if ( NOT LLVM_BUILD_UTILS )
         set_target_properties(${target} PROPERTIES EXCLUDE_FROM_ALL ON)
+      endif()
+
+      # Cpu0 for LLVM Backend
+      if (NOT CMAKE_CONFIGURATION_TYPES)
+        set(${project}_TABLEGEN_EXE "${LLVM_NATIVE_BUILD}/bin/${target}")
+      else()
+        set(${project}_TABLEGEN_EXE "${LLVM_NATIVE_BUILD}/Release/bin/${target}")
       endif()
     endif()
   endif()
